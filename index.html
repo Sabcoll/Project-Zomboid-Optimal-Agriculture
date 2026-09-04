@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aussaat-Kalender — Project Zomboid</title>
+<style>
+  :root {
+    --bg: #171a12;
+    --bg-panel: #20241a;
+    --bg-card: #262b1d;
+    --border: #3a4029;
+    --cream: #e4ddc4;
+    --dim: #9a9683;
+    --rust: #b5651d;
+    --rust-bright: #d97a28;
+    --best: #6f9a45;
+    --good: #a3a84f;
+    --poor: #a8763f;
+    --bad: #4a4438;
+    --best-bg: #2c3a1e;
+    --good-bg: #35361e;
+    --poor-bg: #3a2c1c;
+    --bad-bg: #262319;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at top left, rgba(181,101,29,0.06), transparent 55%),
+      radial-gradient(ellipse at bottom right, rgba(111,154,69,0.05), transparent 55%);
+    color: var(--cream);
+    font-family: 'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 36px 20px 80px;
+  }
+
+  header {
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 22px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  h1 {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    font-size: 30px;
+    margin: 0;
+    color: var(--cream);
+  }
+  h1 span { color: var(--rust-bright); }
+
+  .subtitle {
+    color: var(--dim);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 24px;
+    background: var(--bg-panel);
+    padding: 4px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+  .tab {
+    padding: 9px 20px;
+    cursor: pointer;
+    color: var(--dim);
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 3px;
+    user-select: none;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab:hover { color: var(--cream); }
+  .tab.active {
+    background: var(--rust);
+    color: #1a1a14;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  select, input[type="text"] {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--cream);
+    padding: 10px 14px;
+    font-size: 15px;
+    border-radius: 4px;
+    outline: none;
+    width: 100%;
+    max-width: 320px;
+  }
+  select:focus, input:focus { border-color: var(--rust); }
+
+  .field-label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--dim);
+    margin-bottom: 8px;
+  }
+
+  .month-select-row { margin-bottom: 26px; }
+
+  .growth-columns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 720px) {
+    .growth-columns { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .col {
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    min-height: 120px;
+  }
+  .col-head {
+    padding: 10px 12px;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .col-body { padding: 10px 12px; }
+  .col.best .col-head { background: var(--best); color: #12190a; }
+  .col.good .col-head { background: var(--good); color: #1c1c0c; }
+  .col.poor .col-head { background: var(--poor); color: #1c130a; }
+  .col.bad  .col-head { background: var(--bad);  color: var(--dim); }
+
+  .col.best { background: var(--best-bg); }
+  .col.good { background: var(--good-bg); }
+  .col.poor { background: var(--poor-bg); }
+  .col.bad  { background: var(--bad-bg); }
+
+  .crop-chip {
+    display: block;
+    padding: 6px 0;
+    font-size: 14px;
+    color: var(--cream);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+  }
+  .crop-chip:last-child { border-bottom: none; }
+  .crop-chip:hover { color: var(--rust-bright); }
+  .crop-chip .days {
+    color: var(--dim);
+    font-size: 12px;
+    margin-left: 6px;
+  }
+  .empty-note {
+    color: var(--dim);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  /* Crop search panel */
+  .crop-results {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .crop-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .crop-row-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .crop-row-head h3 {
+    margin: 0;
+    font-size: 18px;
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    color: var(--rust-bright);
+  }
+  .crop-row-head .days-label {
+    color: var(--dim);
+    font-size: 13px;
+  }
+
+  .month-strip {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 4px;
+  }
+  .month-cell {
+    text-align: center;
+    padding: 8px 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+  .month-cell .m-name {
+    display: block;
+    color: rgba(0,0,0,0.55);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+    letter-spacing: 0.3px;
+  }
+  .month-cell.best { background: var(--best); color: #12190a; }
+  .month-cell.good { background: var(--good); color: #1c1c0c; }
+  .month-cell.poor { background: var(--poor); color: #1c130a; }
+  .month-cell.bad  { background: var(--bad-bg); color: var(--dim); border: 1px solid var(--border); }
+  .month-cell.bad .m-name { color: var(--dim); }
+  .month-cell .status { display:block; font-size: 10px; }
+
+  @media (max-width: 720px) {
+    .month-strip { grid-template-columns: repeat(6, 1fr); }
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+  .legend-swatch.best { background: var(--best); }
+  .legend-swatch.good { background: var(--good); }
+  .legend-swatch.poor { background: var(--poor); }
+  .legend-swatch.bad  { background: var(--bad); }
+
+  .no-match {
+    color: var(--dim);
+    font-style: italic;
+    margin-top: 20px;
+  }
+
+  /* Overview table */
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  table.overview {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 980px;
+    font-size: 13px;
+  }
+  table.overview th, table.overview td {
+    padding: 8px 10px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  table.overview thead th {
+    background: var(--bg-panel);
+    color: var(--dim);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    position: sticky;
+    top: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  table.overview th.crop-col, table.overview td.crop-col {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    background: var(--bg-panel);
+    z-index: 1;
+    color: var(--cream);
+    font-weight: 600;
+  }
+  table.overview thead th.crop-col { z-index: 2; }
+  table.overview tbody tr:nth-child(odd) td.crop-col { background: var(--bg-panel); }
+  table.overview tbody tr:nth-child(even) td.crop-col { background: #262b1d; }
+  table.overview td.days-col {
+    text-align: left;
+    color: var(--dim);
+    font-size: 12px;
+  }
+  table.overview td.rating.best { background: var(--best); color: #12190a; font-weight: 600; }
+  table.overview td.rating.good { background: var(--good); color: #1c1c0c; font-weight: 600; }
+  table.overview td.rating.poor { background: var(--poor); color: #1c130a; font-weight: 600; }
+  table.overview td.rating.bad  { background: var(--bad-bg); color: var(--dim); }
+  table.overview tbody tr:hover td.crop-col { color: var(--rust-bright); cursor: pointer; }
+
+  table.overview tr.gradient-row td {
+    padding: 0;
+    height: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.overview td.gradient-cell {
+    padding: 0 !important;
+    height: 10px;
+  }
+  .gradient-bar {
+    position: relative;
+    height: 10px;
+    width: 100%;
+  }
+  .gradient-bar .optimal-marker {
+    position: absolute;
+    top: -2px;
+    width: 2px;
+    height: 14px;
+    background: #f2ead2;
+    box-shadow: 0 0 3px rgba(0,0,0,0.6);
+    transform: translateX(-1px);
+    cursor: help;
+  }
+
+  .optimal-hint {
+    display: block;
+    font-size: 11px;
+    color: var(--rust-bright);
+    margin-top: 2px;
+  }
+
+  .optimal-banner {
+    display: inline-block;
+    background: var(--bg-panel);
+    border: 1px solid var(--rust);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--cream);
+    margin-top: 4px;
+  }
+  .optimal-banner strong { color: var(--rust-bright); }
+
+  .detail-gradient {
+    margin-top: 10px;
+  }
+  .detail-gradient .gradient-bar {
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+  .detail-gradient .optimal-marker {
+    top: -3px;
+    height: 22px;
+  }
+  .gradient-caption {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  footer {
+    margin-top: 50px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--dim);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Aussaat<span>kalender</span></h1>
+      <div class="subtitle">Project Zomboid — Pflanzzeiten nach Monat oder Pflanze</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="overview">Übersicht</div>
+    <div class="tab" data-tab="month">Nach Monat</div>
+    <div class="tab" data-tab="crop">Nach Pflanze</div>
+  </div>
+
+  <!-- OVERVIEW PANEL -->
+  <div class="panel active" id="panel-overview">
+    <div class="table-scroll">
+      <table class="overview">
+        <thead>
+          <tr id="overviewHeadRow"></tr>
+        </thead>
+        <tbody id="overviewBody"></tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch best"></span>Best</div>
+      <div class="legend-item"><span class="legend-swatch good"></span>Good</div>
+      <div class="legend-item"><span class="legend-swatch poor"></span>Poor</div>
+      <div class="legend-item"><span class="legend-swatch bad"></span>Bad</div>
+    </div>
+  </div>
+
+  <!-- MONTH PANEL -->
+  <div class="panel" id="panel-month">
+    <div class="month-select-row">
+      <label class="field-label" for="monthSelect">Welcher Monat ist es?</label>
+      <select id="monthSelect"></select>
+    </div>
+    <div class="growth-columns" id="growthColumns"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch best"></span>Best</div>
+      <div class="legend-item"><span class="legend-swatch good"></span>Good</div>
+      <div class="legend-item"><span class="legend-swatch poor"></span>Poor</div>
+      <div class="legend-item"><span class="legend-swatch bad"></span>Bad</div>
+    </div>
+  </div>
+
+  <!-- CROP PANEL -->
+  <div class="panel" id="panel-crop">
+    <label class="field-label" for="cropSelect">Welche Pflanze?</label>
+    <select id="cropSelect"></select>
+    <div class="crop-results" id="cropResults"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch best"></span>Best</div>
+      <div class="legend-item"><span class="legend-swatch good"></span>Good</div>
+      <div class="legend-item"><span class="legend-swatch poor"></span>Poor</div>
+      <div class="legend-item"><span class="legend-swatch bad"></span>Bad</div>
+    </div>
+  </div>
+
+  <footer>
+    Daten aus der Project-Zomboid-Community-Tabelle. Fehlende Einträge werden als "bad" behandelt.<br>
+    Der "optimale Pflanzzeitpunkt" wird tagesgenau berechnet: Für jeden möglichen Starttag wird der Durchschnitt der Wachstumsqualität über die gesamte Wachstumszeit (auch über Monats- und Jahresgrenzen hinweg) ermittelt. Das Kalenderjahr wird dabei vereinfacht mit 365 Tagen angenommen.
+  </footer>
+</div>
+
+<script>
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS_DE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+// name, [12 ratings in MONTHS order], growing days (as text)
+const CROPS = [
+["Barley", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "108 Tage"],
+["Basil", ["bad","bad","best","poor","good","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Bell Pepper", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Black Sage", ["bad","bad","good","best","best","good","poor","poor","bad","bad","bad","bad"], "60 Tage"],
+["Broadleaf Plantain", ["bad","bad","good","best","good","poor","poor","good","bad","bad","bad","bad"], "60 Tage"],
+["Broccoli", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], "60 Tage"],
+["Cabbages", ["bad","good","best","good","best","good","poor","bad","bad","bad","bad","bad"], "60 Tage"],
+["Carrots", ["bad","best","good","good","good","best","poor","bad","bad","bad","bad","bad"], "90 Tage"],
+["Cauliflower", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Chamomile", ["bad","bad","good","best","good","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Chives", ["bad","bad","good","best","good","poor","poor","good","bad","bad","bad","bad"], "60 Tage"],
+["Cilantro", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Comfrey", ["bad","bad","best","best","good","poor","poor","good","bad","bad","bad","bad"], "60 Tage"],
+["Common Mallow", ["bad","bad","best","best","good","poor","poor","good","bad","bad","bad","bad"], "60 Tage"],
+["Corn", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Cucumber", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Flax", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "108 Tage"],
+["Garlic", ["bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad","bad"], "240 Tage"],
+["Green Peas", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Habanero", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Hemp", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "240 Tage"],
+["Hops", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "240 Tage"],
+["Jalapeno", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Kale", ["bad","good","best","good","good","good","best","poor","bad","bad","bad","bad"], "60 Tage"],
+["Lavender", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Leek", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], "150 Tage"],
+["Lemongrass", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], "60 Tage"],
+["Lettuce", ["bad","good","best","good","good","good","best","good","poor","bad","bad","bad"], "60 Tage"],
+["Marigold", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Mint", ["bad","good","best","good","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Onions", ["bad","best","poor","bad","bad","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Oregano", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Parsley", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Poppies", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Potatoes", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Pumpkin", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Radishes", ["bad","good","best","good","good","good","best","poor","bad","bad","bad","bad"], "30 Tage"],
+["Rosemary", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], "180 Tage"],
+["Roses", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Rye", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "108 Tage"],
+["Sage", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Soybeans", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Spinach", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], "60 Tage"],
+["Strawberry Plant", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Sugar Beet", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], "60 Tage"],
+["Sunflower", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Sweet Potatoes", ["bad","bad","bad","bad","bad","best","poor","bad","bad","bad","bad","bad"], "90 Tage"],
+["Thyme", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
+["Tobacco", ["bad","bad","best","good","good","good","poor","bad","bad","bad","bad","bad"], "180 Tage"],
+["Tomato Vine", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Turnip", ["bad","bad","bad","bad","bad","best","poor","good","best","poor","bad","bad"], "60 Tage"],
+["Watermellon", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
+["Wild Garlic", ["bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad","bad"], "240 Tage"],
+["Winter Wheat", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "108 Tage"],
+["Zucchini", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"]
+];
+
+// ================= Anbau-Fenster-Berechnung =================
+// Berücksichtigt, dass eine Pflanze über die Wachstumszeit hinweg
+// durch mehrere Monate hindurch wächst - der optimale Pflanztag ist
+// der Tag, an dem der DURCHSCHNITT über die gesamte Wachstumszeit
+// am besten ist, nicht zwingend der Tag mit der besten Einzelbewertung.
+
+const MONTH_DAYS = [31,28,31,30,31,30,31,31,30,31,30,31]; // Kalenderjahr, kein Schaltjahr
+const MONTH_START = (() => {
+  const arr = [0];
+  for (let i = 0; i < 11; i++) arr.push(arr[i] + MONTH_DAYS[i]);
+  return arr;
+})();
+const YEAR_LEN = 365;
+const SCORE = { bad: 0, poor: 1, good: 2, best: 3 };
+const SCORE_COLOR = { 0: [74,68,56], 1: [168,118,63], 2: [163,168,79], 3: [111,154,69] }; // bad, poor, good, best (RGB)
+
+function dailyScoresFor(ratings) {
+  const arr = new Array(YEAR_LEN);
+  for (let m = 0; m < 12; m++) {
+    const s = SCORE[ratings[m]] ?? 0;
+    for (let d = MONTH_START[m]; d < MONTH_START[m] + MONTH_DAYS[m]; d++) arr[d] = s;
+  }
+  return arr;
+}
+
+function computeAvgByStart(dailyScores, growDays) {
+  const doubled = dailyScores.concat(dailyScores);
+  const prefix = new Array(doubled.length + 1).fill(0);
+  for (let i = 0; i < doubled.length; i++) prefix[i + 1] = prefix[i] + doubled[i];
+  const avg = new Array(YEAR_LEN);
+  for (let s = 0; s < YEAR_LEN; s++) avg[s] = (prefix[s + growDays] - prefix[s]) / growDays;
+  return avg;
+}
+
+function findOptimalWindow(avg) {
+  const n = avg.length;
+  const maxVal = Math.max(...avg);
+  const isMax = avg.map(v => Math.abs(v - maxVal) < 1e-9);
+  if (isMax.every(v => v)) return { allYear: true, value: maxVal, start: 0, end: n - 1 };
+
+  let breakIdx = 0;
+  for (let i = 0; i < n; i++) {
+    if (!isMax[i] && isMax[(i + 1) % n]) { breakIdx = (i + 1) % n; break; }
+  }
+  const runs = [];
+  let i = 0;
+  while (i < n) {
+    const idx = (breakIdx + i) % n;
+    if (isMax[idx]) {
+      const runStart = idx;
+      let len = 0;
+      while (i < n && isMax[(breakIdx + i) % n]) { len++; i++; }
+      runs.push({ start: runStart, end: (breakIdx + i - 1) % n, len });
+    } else { i++; }
+  }
+  runs.sort((a, b) => b.len - a.len);
+  return { start: runs[0].start, end: runs[0].end, value: maxVal };
+}
+
+function dayOfYearToDate(d) {
+  d = ((d % YEAR_LEN) + YEAR_LEN) % YEAR_LEN;
+  let m = 0;
+  for (; m < 12; m++) if (d < MONTH_START[m] + MONTH_DAYS[m]) break;
+  const dayInMonth = d - MONTH_START[m] + 1;
+  return dayInMonth + ". " + MONTHS_DE[m];
+}
+
+function formatWindow(win) {
+  if (win.allYear) return "ganzjährig gleich gut";
+  if (win.start === win.end) return dayOfYearToDate(win.start);
+  const rangeLen = ((win.end - win.start + YEAR_LEN) % YEAR_LEN) + 1;
+  const base = dayOfYearToDate(win.start) + " – " + dayOfYearToDate(win.end);
+  return rangeLen >= 5 ? base + " (gesamter Zeitraum gleich gut)" : base;
+}
+
+function scoreToColor(v) {
+  v = Math.max(0, Math.min(3, v));
+  const lo = Math.floor(v), hi = Math.min(3, lo + 1), t = v - lo;
+  const c1 = SCORE_COLOR[lo], c2 = SCORE_COLOR[hi];
+  const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
+  const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
+  const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
+  return "rgb(" + r + "," + g + "," + b + ")";
+}
+
+// Analyse pro Pflanze vorab berechnen
+const CROP_ANALYSIS = {};
+CROPS.forEach(([name, ratings, daysText]) => {
+  const growDays = parseInt(daysText, 10) || 60;
+  const daily = dailyScoresFor(ratings);
+  const avg = computeAvgByStart(daily, growDays);
+  const win = findOptimalWindow(avg);
+  CROP_ANALYSIS[name] = { growDays, avg, win, windowText: formatWindow(win) };
+});
+
+const GRADIENT_SAMPLES_PER_MONTH = 6;
+function buildGradientCss(avg) {
+  const total = GRADIENT_SAMPLES_PER_MONTH * 12;
+  const stops = [];
+  for (let p = 0; p <= total; p++) {
+    const monthIdx = Math.min(11, Math.floor(p / GRADIENT_SAMPLES_PER_MONTH));
+    const frac = (p % GRADIENT_SAMPLES_PER_MONTH) / GRADIENT_SAMPLES_PER_MONTH;
+    const day = Math.min(YEAR_LEN - 1, Math.round(MONTH_START[monthIdx] + frac * MONTH_DAYS[monthIdx]));
+    const pct = (p / total) * 100;
+    stops.push(scoreToColor(avg[day]) + " " + pct.toFixed(2) + "%");
+  }
+  return "linear-gradient(to right, " + stops.join(", ") + ")";
+}
+
+function markerPercentForDay(day) {
+  let m = 0;
+  for (; m < 12; m++) if (day < MONTH_START[m] + MONTH_DAYS[m]) break;
+  const fracInMonth = (day - MONTH_START[m]) / MONTH_DAYS[m];
+  return ((m + fracInMonth) / 12) * 100;
+}
+
+function buildGradientBarHtml(name, extraClass) {
+  const a = CROP_ANALYSIS[name];
+  const gradientCss = buildGradientCss(a.avg);
+  const markerPct = markerPercentForDay(a.win.allYear ? 0 : a.win.start);
+  const title = "Optimaler Pflanzzeitpunkt: " + a.windowText;
+  let marker = "";
+  if (!a.win.allYear) {
+    marker = '<span class="optimal-marker" style="left:' + markerPct.toFixed(2) + '%" title="' + title + '"></span>';
+  }
+  return '<div class="gradient-bar' + (extraClass ? ' ' + extraClass : '') + '" style="background:' + gradientCss + ';" title="' + title + '">' + marker + '</div>';
+}
+
+// --- Tabs ---
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+function jumpToCrop(name) {
+  document.querySelector('.tab[data-tab="crop"]').click();
+  cropSelect.value = name;
+  renderCropDetail();
+}
+
+// --- Overview panel ---
+function renderOverview() {
+  const headRow = document.getElementById('overviewHeadRow');
+  headRow.innerHTML = '<th class="crop-col">Pflanze</th>' +
+    MONTHS_DE.map(m => '<th>' + m.slice(0,3) + '</th>').join('') +
+    '<th class="days-col">Wachstumszeit</th>';
+
+  const body = document.getElementById('overviewBody');
+  body.innerHTML = "";
+  CROPS.forEach(([name, ratings, days]) => {
+    const tr = document.createElement('tr');
+    let html = '<td class="crop-col" rowspan="2">' + name + '</td>';
+    ratings.forEach(status => {
+      html += '<td class="rating ' + status + '">' + status + '</td>';
+    });
+    html += '<td class="days-col" rowspan="2">' + days + '</td>';
+    tr.innerHTML = html;
+    tr.addEventListener('click', () => jumpToCrop(name));
+    body.appendChild(tr);
+
+    const gradTr = document.createElement('tr');
+    gradTr.className = 'gradient-row';
+    gradTr.innerHTML = '<td class="gradient-cell" colspan="12">' + buildGradientBarHtml(name) + '</td>';
+    gradTr.addEventListener('click', () => jumpToCrop(name));
+    body.appendChild(gradTr);
+  });
+}
+renderOverview();
+
+// --- Month panel ---
+const monthSelect = document.getElementById('monthSelect');
+MONTHS_DE.forEach((name, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = name;
+  monthSelect.appendChild(opt);
+});
+const currentMonthIndex = new Date().getMonth();
+monthSelect.value = currentMonthIndex;
+
+function renderMonth() {
+  const idx = parseInt(monthSelect.value, 10);
+  const buckets = { best: [], good: [], poor: [], bad: [] };
+  CROPS.forEach(([name, ratings, days]) => {
+    const status = ratings[idx] || "bad";
+    buckets[status].push([name, days]);
+  });
+  ["best","good","poor","bad"].forEach(status => buckets[status].sort((a,b) => a[0].localeCompare(b[0])));
+
+  const labels = { best: "Best", good: "Good", poor: "Poor", bad: "Bad" };
+  const container = document.getElementById('growthColumns');
+  container.innerHTML = "";
+  ["best","good","poor","bad"].forEach(status => {
+    const col = document.createElement('div');
+    col.className = 'col ' + status;
+    const head = document.createElement('div');
+    head.className = 'col-head';
+    head.textContent = labels[status] + " (" + buckets[status].length + ")";
+    const body = document.createElement('div');
+    body.className = 'col-body';
+    if (buckets[status].length === 0) {
+      const p = document.createElement('div');
+      p.className = 'empty-note';
+      p.textContent = "Keine Pflanzen";
+      body.appendChild(p);
+    } else {
+      buckets[status].forEach(([name, days]) => {
+        const chip = document.createElement('div');
+        chip.className = 'crop-chip';
+        const optText = CROP_ANALYSIS[name].windowText;
+        chip.innerHTML = name + '<span class="days">' + days + '</span>' +
+          '<span class="optimal-hint">Optimal: ' + optText + '</span>';
+        chip.addEventListener('click', () => jumpToCrop(name));
+        body.appendChild(chip);
+      });
+    }
+    col.appendChild(head);
+    col.appendChild(body);
+    container.appendChild(col);
+  });
+}
+monthSelect.addEventListener('change', renderMonth);
+renderMonth();
+
+// --- Crop panel ---
+const cropSelect = document.getElementById('cropSelect');
+const cropResults = document.getElementById('cropResults');
+
+const sortedCrops = [...CROPS].sort((a, b) => a[0].localeCompare(b[0]));
+sortedCrops.forEach(([name]) => {
+  const opt = document.createElement('option');
+  opt.value = name;
+  opt.textContent = name;
+  cropSelect.appendChild(opt);
+});
+cropSelect.value = sortedCrops[0][0];
+
+function renderCropDetail() {
+  const name = cropSelect.value;
+  const entry = CROPS.find(c => c[0] === name);
+  cropResults.innerHTML = "";
+  if (!entry) return;
+
+  const [cropName, ratings, days] = entry;
+  const analysis = CROP_ANALYSIS[cropName];
+  const row = document.createElement('div');
+  row.className = 'crop-row';
+
+  const head = document.createElement('div');
+  head.className = 'crop-row-head';
+  head.innerHTML = '<h3>' + cropName + '</h3><span class="days-label">Wachstumszeit: ' + days + '</span>';
+  row.appendChild(head);
+
+  const banner = document.createElement('div');
+  banner.className = 'optimal-banner';
+  banner.innerHTML = 'Optimaler Pflanzzeitpunkt am: <strong>' + analysis.windowText + '</strong>';
+  row.appendChild(banner);
+
+  const strip = document.createElement('div');
+  strip.className = 'month-strip';
+  ratings.forEach((status, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'month-cell ' + status;
+    cell.innerHTML = '<span class="m-name">' + MONTHS_DE[i].slice(0,3) + '</span><span class="status">' + status + '</span>';
+    strip.appendChild(cell);
+  });
+  row.appendChild(strip);
+
+  const gradWrap = document.createElement('div');
+  gradWrap.className = 'detail-gradient';
+  gradWrap.innerHTML = buildGradientBarHtml(cropName, 'detail-bar') +
+    '<div class="gradient-caption"><span>Jan</span><span>Dez</span></div>';
+  row.appendChild(gradWrap);
+
+  cropResults.appendChild(row);
+}
+cropSelect.addEventListener('change', renderCropDetail);
+renderCropDetail();
+</script>
+</body>
+</html>
