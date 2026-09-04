@@ -312,72 +312,6 @@
   table.overview td.rating.bad  { background: var(--bad-bg); color: var(--dim); }
   table.overview tbody tr:hover td.crop-col { color: var(--rust-bright); cursor: pointer; }
 
-  table.overview tr.gradient-row td {
-    padding: 0;
-    height: 10px;
-    border-bottom: 1px solid var(--border);
-  }
-  table.overview td.gradient-cell {
-    padding: 0 !important;
-    height: 10px;
-  }
-  .gradient-bar {
-    position: relative;
-    height: 10px;
-    width: 100%;
-  }
-  .gradient-bar .optimal-marker {
-    position: absolute;
-    top: -2px;
-    width: 2px;
-    height: 14px;
-    background: #f2ead2;
-    box-shadow: 0 0 3px rgba(0,0,0,0.6);
-    transform: translateX(-1px);
-    cursor: help;
-  }
-
-  .optimal-hint {
-    display: block;
-    font-size: 11px;
-    color: var(--rust-bright);
-    margin-top: 2px;
-  }
-
-  .optimal-banner {
-    display: inline-block;
-    background: var(--bg-panel);
-    border: 1px solid var(--rust);
-    border-radius: 4px;
-    padding: 6px 12px;
-    font-size: 13px;
-    color: var(--cream);
-    margin-top: 4px;
-  }
-  .optimal-banner strong { color: var(--rust-bright); }
-
-  .detail-gradient {
-    margin-top: 10px;
-  }
-  .detail-gradient .gradient-bar {
-    height: 16px;
-    border-radius: 3px;
-    border: 1px solid var(--border);
-  }
-  .detail-gradient .optimal-marker {
-    top: -3px;
-    height: 22px;
-  }
-  .gradient-caption {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    color: var(--dim);
-    margin-top: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-  }
-
   footer {
     margin-top: 50px;
     padding-top: 16px;
@@ -449,8 +383,7 @@
   </div>
 
   <footer>
-    Daten aus der Project-Zomboid-Community-Tabelle. Fehlende Einträge werden als "bad" behandelt.<br>
-    Der "optimale Pflanzzeitpunkt" wird tagesgenau berechnet: Für jeden möglichen Starttag wird der Durchschnitt der Wachstumsqualität über die gesamte Wachstumszeit (auch über Monats- und Jahresgrenzen hinweg) ermittelt. Das Kalenderjahr wird dabei vereinfacht mit 365 Tagen angenommen.
+    Daten aus der Project-Zomboid-Community-Tabelle. Fehlende Einträge werden als "bad" behandelt.
   </footer>
 </div>
 
@@ -517,134 +450,6 @@ const CROPS = [
 ["Zucchini", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"]
 ];
 
-// ================= Anbau-Fenster-Berechnung =================
-// Berücksichtigt, dass eine Pflanze über die Wachstumszeit hinweg
-// durch mehrere Monate hindurch wächst - der optimale Pflanztag ist
-// der Tag, an dem der DURCHSCHNITT über die gesamte Wachstumszeit
-// am besten ist, nicht zwingend der Tag mit der besten Einzelbewertung.
-
-const MONTH_DAYS = [31,28,31,30,31,30,31,31,30,31,30,31]; // Kalenderjahr, kein Schaltjahr
-const MONTH_START = (() => {
-  const arr = [0];
-  for (let i = 0; i < 11; i++) arr.push(arr[i] + MONTH_DAYS[i]);
-  return arr;
-})();
-const YEAR_LEN = 365;
-const SCORE = { bad: 0, poor: 1, good: 2, best: 3 };
-const SCORE_COLOR = { 0: [74,68,56], 1: [168,118,63], 2: [163,168,79], 3: [111,154,69] }; // bad, poor, good, best (RGB)
-
-function dailyScoresFor(ratings) {
-  const arr = new Array(YEAR_LEN);
-  for (let m = 0; m < 12; m++) {
-    const s = SCORE[ratings[m]] ?? 0;
-    for (let d = MONTH_START[m]; d < MONTH_START[m] + MONTH_DAYS[m]; d++) arr[d] = s;
-  }
-  return arr;
-}
-
-function computeAvgByStart(dailyScores, growDays) {
-  const doubled = dailyScores.concat(dailyScores);
-  const prefix = new Array(doubled.length + 1).fill(0);
-  for (let i = 0; i < doubled.length; i++) prefix[i + 1] = prefix[i] + doubled[i];
-  const avg = new Array(YEAR_LEN);
-  for (let s = 0; s < YEAR_LEN; s++) avg[s] = (prefix[s + growDays] - prefix[s]) / growDays;
-  return avg;
-}
-
-function findOptimalWindow(avg) {
-  const n = avg.length;
-  const maxVal = Math.max(...avg);
-  const isMax = avg.map(v => Math.abs(v - maxVal) < 1e-9);
-  if (isMax.every(v => v)) return { allYear: true, value: maxVal, start: 0, end: n - 1 };
-
-  let breakIdx = 0;
-  for (let i = 0; i < n; i++) {
-    if (!isMax[i] && isMax[(i + 1) % n]) { breakIdx = (i + 1) % n; break; }
-  }
-  const runs = [];
-  let i = 0;
-  while (i < n) {
-    const idx = (breakIdx + i) % n;
-    if (isMax[idx]) {
-      const runStart = idx;
-      let len = 0;
-      while (i < n && isMax[(breakIdx + i) % n]) { len++; i++; }
-      runs.push({ start: runStart, end: (breakIdx + i - 1) % n, len });
-    } else { i++; }
-  }
-  runs.sort((a, b) => b.len - a.len);
-  return { start: runs[0].start, end: runs[0].end, value: maxVal };
-}
-
-function dayOfYearToDate(d) {
-  d = ((d % YEAR_LEN) + YEAR_LEN) % YEAR_LEN;
-  let m = 0;
-  for (; m < 12; m++) if (d < MONTH_START[m] + MONTH_DAYS[m]) break;
-  const dayInMonth = d - MONTH_START[m] + 1;
-  return dayInMonth + ". " + MONTHS_DE[m];
-}
-
-function formatWindow(win) {
-  if (win.allYear) return "ganzjährig gleich gut";
-  if (win.start === win.end) return dayOfYearToDate(win.start);
-  const rangeLen = ((win.end - win.start + YEAR_LEN) % YEAR_LEN) + 1;
-  const base = dayOfYearToDate(win.start) + " – " + dayOfYearToDate(win.end);
-  return rangeLen >= 5 ? base + " (gesamter Zeitraum gleich gut)" : base;
-}
-
-function scoreToColor(v) {
-  v = Math.max(0, Math.min(3, v));
-  const lo = Math.floor(v), hi = Math.min(3, lo + 1), t = v - lo;
-  const c1 = SCORE_COLOR[lo], c2 = SCORE_COLOR[hi];
-  const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
-  const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
-  const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
-  return "rgb(" + r + "," + g + "," + b + ")";
-}
-
-// Analyse pro Pflanze vorab berechnen
-const CROP_ANALYSIS = {};
-CROPS.forEach(([name, ratings, daysText]) => {
-  const growDays = parseInt(daysText, 10) || 60;
-  const daily = dailyScoresFor(ratings);
-  const avg = computeAvgByStart(daily, growDays);
-  const win = findOptimalWindow(avg);
-  CROP_ANALYSIS[name] = { growDays, avg, win, windowText: formatWindow(win) };
-});
-
-const GRADIENT_SAMPLES_PER_MONTH = 6;
-function buildGradientCss(avg) {
-  const total = GRADIENT_SAMPLES_PER_MONTH * 12;
-  const stops = [];
-  for (let p = 0; p <= total; p++) {
-    const monthIdx = Math.min(11, Math.floor(p / GRADIENT_SAMPLES_PER_MONTH));
-    const frac = (p % GRADIENT_SAMPLES_PER_MONTH) / GRADIENT_SAMPLES_PER_MONTH;
-    const day = Math.min(YEAR_LEN - 1, Math.round(MONTH_START[monthIdx] + frac * MONTH_DAYS[monthIdx]));
-    const pct = (p / total) * 100;
-    stops.push(scoreToColor(avg[day]) + " " + pct.toFixed(2) + "%");
-  }
-  return "linear-gradient(to right, " + stops.join(", ") + ")";
-}
-
-function markerPercentForDay(day) {
-  let m = 0;
-  for (; m < 12; m++) if (day < MONTH_START[m] + MONTH_DAYS[m]) break;
-  const fracInMonth = (day - MONTH_START[m]) / MONTH_DAYS[m];
-  return ((m + fracInMonth) / 12) * 100;
-}
-
-function buildGradientBarHtml(name, extraClass) {
-  const a = CROP_ANALYSIS[name];
-  const gradientCss = buildGradientCss(a.avg);
-  const markerPct = markerPercentForDay(a.win.allYear ? 0 : a.win.start);
-  const title = "Optimaler Pflanzzeitpunkt: " + a.windowText;
-  let marker = "";
-  if (!a.win.allYear) {
-    marker = '<span class="optimal-marker" style="left:' + markerPct.toFixed(2) + '%" title="' + title + '"></span>';
-  }
-  return '<div class="gradient-bar' + (extraClass ? ' ' + extraClass : '') + '" style="background:' + gradientCss + ';" title="' + title + '">' + marker + '</div>';
-}
-
 // --- Tabs ---
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -672,20 +477,14 @@ function renderOverview() {
   body.innerHTML = "";
   CROPS.forEach(([name, ratings, days]) => {
     const tr = document.createElement('tr');
-    let html = '<td class="crop-col" rowspan="2">' + name + '</td>';
+    let html = '<td class="crop-col">' + name + '</td>';
     ratings.forEach(status => {
       html += '<td class="rating ' + status + '">' + status + '</td>';
     });
-    html += '<td class="days-col" rowspan="2">' + days + '</td>';
+    html += '<td class="days-col">' + days + '</td>';
     tr.innerHTML = html;
     tr.addEventListener('click', () => jumpToCrop(name));
     body.appendChild(tr);
-
-    const gradTr = document.createElement('tr');
-    gradTr.className = 'gradient-row';
-    gradTr.innerHTML = '<td class="gradient-cell" colspan="12">' + buildGradientBarHtml(name) + '</td>';
-    gradTr.addEventListener('click', () => jumpToCrop(name));
-    body.appendChild(gradTr);
   });
 }
 renderOverview();
@@ -730,9 +529,7 @@ function renderMonth() {
       buckets[status].forEach(([name, days]) => {
         const chip = document.createElement('div');
         chip.className = 'crop-chip';
-        const optText = CROP_ANALYSIS[name].windowText;
-        chip.innerHTML = name + '<span class="days">' + days + '</span>' +
-          '<span class="optimal-hint">Optimal: ' + optText + '</span>';
+        chip.innerHTML = name + '<span class="days">' + days + '</span>';
         chip.addEventListener('click', () => jumpToCrop(name));
         body.appendChild(chip);
       });
@@ -765,7 +562,6 @@ function renderCropDetail() {
   if (!entry) return;
 
   const [cropName, ratings, days] = entry;
-  const analysis = CROP_ANALYSIS[cropName];
   const row = document.createElement('div');
   row.className = 'crop-row';
 
@@ -773,11 +569,6 @@ function renderCropDetail() {
   head.className = 'crop-row-head';
   head.innerHTML = '<h3>' + cropName + '</h3><span class="days-label">Wachstumszeit: ' + days + '</span>';
   row.appendChild(head);
-
-  const banner = document.createElement('div');
-  banner.className = 'optimal-banner';
-  banner.innerHTML = 'Optimaler Pflanzzeitpunkt am: <strong>' + analysis.windowText + '</strong>';
-  row.appendChild(banner);
 
   const strip = document.createElement('div');
   strip.className = 'month-strip';
@@ -788,12 +579,6 @@ function renderCropDetail() {
     strip.appendChild(cell);
   });
   row.appendChild(strip);
-
-  const gradWrap = document.createElement('div');
-  gradWrap.className = 'detail-gradient';
-  gradWrap.innerHTML = buildGradientBarHtml(cropName, 'detail-bar') +
-    '<div class="gradient-caption"><span>Jan</span><span>Dez</span></div>';
-  row.appendChild(gradWrap);
 
   cropResults.appendChild(row);
 }
