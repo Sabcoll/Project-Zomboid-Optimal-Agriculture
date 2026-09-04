@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aussaat-Kalender — Project Zomboid</title>
+<title>Sowing Calendar — Project Zomboid</title>
 <style>
   :root {
     --bg: #171a12;
@@ -14,33 +14,42 @@
     --dim: #9a9683;
     --rust: #b5651d;
     --rust-bright: #d97a28;
+    
     --best: #6f9a45;
     --good: #a3a84f;
     --poor: #a8763f;
     --bad: #4a4438;
+    
     --best-bg: #2c3a1e;
     --good-bg: #35361e;
     --poor-bg: #3a2c1c;
     --bad-bg: #262319;
+    
+    --phase6-bg: #2b5c8f;
+    --phase7-bg: #a84b80;
+    --growing-bg: #2d4732;
   }
 
   * { box-sizing: border-box; }
 
-  body {
+  html, body {
     margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
     background: var(--bg);
     background-image:
       radial-gradient(ellipse at top left, rgba(181,101,29,0.06), transparent 55%),
       radial-gradient(ellipse at bottom right, rgba(111,154,69,0.05), transparent 55%);
     color: var(--cream);
-    font-family: 'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Segoe UI', -apple-system, sans-serif;
     min-height: 100vh;
   }
 
   .wrap {
-    max-width: 980px;
+    width: 95%;
     margin: 0 auto;
-    padding: 36px 20px 80px;
+    padding: 36px 0 80px;
   }
 
   header {
@@ -60,7 +69,6 @@
     letter-spacing: 0.5px;
     font-size: 30px;
     margin: 0;
-    color: var(--cream);
   }
   h1 span { color: var(--rust-bright); }
 
@@ -68,6 +76,24 @@
     color: var(--dim);
     font-size: 14px;
     margin-top: 4px;
+  }
+
+  .controls-row {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
   .tabs {
@@ -79,6 +105,7 @@
     border-radius: 4px;
     border: 1px solid var(--border);
     width: fit-content;
+    flex-wrap: wrap;
   }
   .tab {
     padding: 9px 20px;
@@ -99,16 +126,15 @@
   .panel { display: none; }
   .panel.active { display: block; }
 
-  select, input[type="text"] {
+  select, input[type="text"], input[type="date"] {
     background: var(--bg-panel);
     border: 1px solid var(--border);
     color: var(--cream);
-    padding: 10px 14px;
-    font-size: 15px;
+    padding: 8px 12px;
+    font-size: 14px;
     border-radius: 4px;
     outline: none;
-    width: 100%;
-    max-width: 320px;
+    max-width: 100%;
   }
   select:focus, input:focus { border-color: var(--rust); }
 
@@ -118,39 +144,107 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--dim);
-    margin-bottom: 8px;
   }
 
-  .month-select-row { margin-bottom: 26px; }
+  /* OVERVIEW & CROP TABLE STYLING */
+  .table-scroll {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: auto;
+  }
 
+  table.overview {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 11px;
+    table-layout: auto;
+  }
+
+  table.overview th {
+    background: var(--bg-panel);
+    color: var(--dim);
+    font-weight: 700;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    padding: 0;
+  }
+
+  th.month-header {
+    border-right: 1px solid var(--border);
+    font-size: 10px;
+    padding: 4px 0;
+    text-align: center;
+  }
+
+  th.day-header {
+    font-size: 7px;
+    font-weight: normal;
+    color: var(--dim);
+    text-align: center;
+    padding: 2px 0;
+  }
+
+  td.crop-col-sticky, th.crop-col-sticky {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    background: var(--bg-card) !important;
+    text-align: left !important;
+    padding: 4px 8px !important;
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    font-weight: bold;
+    border-right: 2px solid var(--border) !important;
+    color: var(--cream);
+    font-size: 11px;
+    white-space: normal;
+    word-wrap: break-word;
+    hyphens: auto;
+  }
+
+  tr.row-rating td { height: 28px; }
+  tr.row-phases td { height: 12px; border-bottom: 2px solid var(--border); }
+
+  td.block-cell {
+    border-right: 1px solid rgba(255,255,255,0.02);
+    padding: 0;
+    min-width: 8px;
+  }
+  td.month-end { border-right: 1px solid var(--border); }
+
+  /* Rating Colors */
+  .rating.best { background: var(--best); color: #12190a; font-weight: 600; }
+  .rating.good { background: var(--good); color: #1c1c0c; font-weight: 600; }
+  .rating.poor { background: var(--poor); color: #1c130a; font-weight: 600; }
+  .rating.bad  { background: var(--bad-bg); color: var(--dim); }
+
+  /* Phase Colors */
+  .phase-cell.growing { background: var(--growing-bg); }
+  .phase-cell.phase6  { background: var(--phase6-bg); }
+  .phase-cell.phase7  { background: var(--phase7-bg); }
+
+  /* MONTH PANEL */
   .growth-columns {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 14px;
-  }
-  @media (max-width: 720px) {
-    .growth-columns { grid-template-columns: repeat(2, 1fr); }
+    width: 100%;
   }
 
-  .col {
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    overflow: hidden;
-    min-height: 120px;
-  }
-  .col-head {
-    padding: 10px 12px;
-    font-weight: 700;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-  }
+  .col { border-radius: 6px; border: 1px solid var(--border); overflow: hidden; }
+  .col-head { padding: 10px 12px; font-weight: 700; font-size: 13px; text-transform: uppercase; }
   .col-body { padding: 10px 12px; }
   .col.best .col-head { background: var(--best); color: #12190a; }
   .col.good .col-head { background: var(--good); color: #1c1c0c; }
   .col.poor .col-head { background: var(--poor); color: #1c130a; }
   .col.bad  .col-head { background: var(--bad);  color: var(--dim); }
-
   .col.best { background: var(--best-bg); }
   .col.good { background: var(--good-bg); }
   .col.poor { background: var(--poor-bg); }
@@ -158,162 +252,50 @@
 
   .crop-chip {
     display: block;
-    padding: 6px 0;
+    padding: 10px 0;
     font-size: 14px;
-    color: var(--cream);
     border-bottom: 1px solid rgba(255,255,255,0.05);
     cursor: pointer;
+    word-break: break-word;
   }
-  .crop-chip:last-child { border-bottom: none; }
   .crop-chip:hover { color: var(--rust-bright); }
-  .crop-chip .days {
-    color: var(--dim);
-    font-size: 12px;
-    margin-left: 6px;
-  }
-  .empty-note {
-    color: var(--dim);
-    font-size: 13px;
-    font-style: italic;
-  }
 
-  /* Crop search panel */
-  .crop-results {
-    margin-top: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  .crop-info-text {
+    font-size: 11px;
+    color: var(--dim);
+    margin-top: 3px;
+    line-height: 1.35;
   }
+  .crop-info-text span.p6 { color: #6db0f7; font-weight: 600; }
+  .crop-info-text span.p7 { color: #e582bd; font-weight: 600; }
 
-  .crop-row {
+  /* CROP PANEL SPECIFIC STYLING */
+  .crop-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 14px 16px;
+    padding: 20px;
+    width: 100%;
   }
-  .crop-row-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .crop-row-head h3 {
-    margin: 0;
+  .crop-card h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
     font-size: 18px;
-    font-family: 'Oswald', 'Arial Narrow', sans-serif;
-    color: var(--rust-bright);
-  }
-  .crop-row-head .days-label {
-    color: var(--dim);
-    font-size: 13px;
-  }
-
-  .month-strip {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 4px;
-  }
-  .month-cell {
-    text-align: center;
-    padding: 8px 2px 6px;
-    border-radius: 3px;
-    font-size: 10px;
-  }
-  .month-cell .m-name {
-    display: block;
-    color: rgba(0,0,0,0.55);
-    font-weight: 700;
-    text-transform: uppercase;
-    margin-bottom: 3px;
-    letter-spacing: 0.3px;
-  }
-  .month-cell.best { background: var(--best); color: #12190a; }
-  .month-cell.good { background: var(--good); color: #1c1c0c; }
-  .month-cell.poor { background: var(--poor); color: #1c130a; }
-  .month-cell.bad  { background: var(--bad-bg); color: var(--dim); border: 1px solid var(--border); }
-  .month-cell.bad .m-name { color: var(--dim); }
-  .month-cell .status { display:block; font-size: 10px; }
-
-  @media (max-width: 720px) {
-    .month-strip { grid-template-columns: repeat(6, 1fr); }
   }
 
   .legend {
     display: flex;
     gap: 16px;
-    margin-top: 28px;
+    margin-top: 24px;
     flex-wrap: wrap;
     font-size: 12px;
     color: var(--dim);
   }
   .legend-item { display: flex; align-items: center; gap: 6px; }
-  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
-  .legend-swatch.best { background: var(--best); }
-  .legend-swatch.good { background: var(--good); }
-  .legend-swatch.poor { background: var(--poor); }
-  .legend-swatch.bad  { background: var(--bad); }
-
-  .no-match {
-    color: var(--dim);
-    font-style: italic;
-    margin-top: 20px;
-  }
-
-  /* Overview table */
-  .table-scroll {
-    overflow-x: auto;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-  }
-  table.overview {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 980px;
-    font-size: 13px;
-  }
-  table.overview th, table.overview td {
-    padding: 8px 10px;
-    text-align: center;
-    white-space: nowrap;
-  }
-  table.overview thead th {
-    background: var(--bg-panel);
-    color: var(--dim);
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.4px;
-    position: sticky;
-    top: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  table.overview th.crop-col, table.overview td.crop-col {
-    text-align: left;
-    position: sticky;
-    left: 0;
-    background: var(--bg-panel);
-    z-index: 1;
-    color: var(--cream);
-    font-weight: 600;
-  }
-  table.overview thead th.crop-col { z-index: 2; }
-  table.overview tbody tr:nth-child(odd) td.crop-col { background: var(--bg-panel); }
-  table.overview tbody tr:nth-child(even) td.crop-col { background: #262b1d; }
-  table.overview td.days-col {
-    text-align: left;
-    color: var(--dim);
-    font-size: 12px;
-  }
-  table.overview td.rating.best { background: var(--best); color: #12190a; font-weight: 600; }
-  table.overview td.rating.good { background: var(--good); color: #1c1c0c; font-weight: 600; }
-  table.overview td.rating.poor { background: var(--poor); color: #1c130a; font-weight: 600; }
-  table.overview td.rating.bad  { background: var(--bad-bg); color: var(--dim); }
-  table.overview tbody tr:hover td.crop-col { color: var(--rust-bright); cursor: pointer; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
 
   footer {
-    margin-top: 50px;
+    margin-top: 40px;
     padding-top: 16px;
     border-top: 1px solid var(--border);
     color: var(--dim);
@@ -325,132 +307,445 @@
 <div class="wrap">
   <header>
     <div>
-      <h1>Aussaat<span>kalender</span></h1>
-      <div class="subtitle">Project Zomboid — Pflanzzeiten nach Monat oder Pflanze</div>
+      <h1>Sowing <span>Calendar</span></h1>
+      <div class="subtitle">Project Zomboid — Dynamic Growth Grid</div>
     </div>
   </header>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="overview">Übersicht</div>
-    <div class="tab" data-tab="month">Nach Monat</div>
-    <div class="tab" data-tab="crop">Nach Pflanze</div>
+  <div class="controls-row">
+    <div class="control-group">
+      <label class="field-label" for="sowingDate">Sowing Date:</label>
+      <input type="date" id="sowingDate" />
+    </div>
+
+    <div class="control-group">
+      <label class="field-label" for="stepSelect">Grid Interval:</label>
+      <select id="stepSelect">
+        <option value="1">1 Day (Exact)</option>
+        <option value="2">2 Days</option>
+        <option value="3" selected>3 Days (Default)</option>
+        <option value="4">4 Days</option>
+        <option value="5">5 Days</option>
+        <option value="6">6 Days</option>
+        <option value="7">7 Days (1 Week)</option>
+      </select>
+    </div>
   </div>
 
-  <!-- OVERVIEW PANEL -->
+  <div class="tabs">
+    <div class="tab active" data-tab="overview">Overview</div>
+    <div class="tab" data-tab="month">By Month</div>
+    <div class="tab" data-tab="crop">By Crop</div>
+  </div>
+
+  <!-- PANEL 1: OVERVIEW -->
   <div class="panel active" id="panel-overview">
     <div class="table-scroll">
       <table class="overview">
         <thead>
-          <tr id="overviewHeadRow"></tr>
+          <tr id="monthHeadRow"></tr>
+          <tr id="dayHeadRow"></tr>
         </thead>
         <tbody id="overviewBody"></tbody>
       </table>
     </div>
     <div class="legend">
-      <div class="legend-item"><span class="legend-swatch best"></span>Best</div>
-      <div class="legend-item"><span class="legend-swatch good"></span>Good</div>
-      <div class="legend-item"><span class="legend-swatch poor"></span>Poor</div>
-      <div class="legend-item"><span class="legend-swatch bad"></span>Bad</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--best)"></span>Best</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--good)"></span>Good</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--poor)"></span>Poor</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--bad-bg); border: 1px solid var(--border);"></span>Bad</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--growing-bg)"></span>Growing</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--phase6-bg)"></span>Phase 6 (Harvest)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--phase7-bg)"></span>Phase 7 (Seed Blooming)</div>
     </div>
   </div>
 
-  <!-- MONTH PANEL -->
+  <!-- PANEL 2: MONTH -->
   <div class="panel" id="panel-month">
-    <div class="month-select-row">
-      <label class="field-label" for="monthSelect">Welcher Monat ist es?</label>
+    <div style="margin-bottom: 20px;">
+      <label class="field-label" for="monthSelect">Select Month:</label>
       <select id="monthSelect"></select>
     </div>
     <div class="growth-columns" id="growthColumns"></div>
-    <div class="legend">
-      <div class="legend-item"><span class="legend-swatch best"></span>Best</div>
-      <div class="legend-item"><span class="legend-swatch good"></span>Good</div>
-      <div class="legend-item"><span class="legend-swatch poor"></span>Poor</div>
-      <div class="legend-item"><span class="legend-swatch bad"></span>Bad</div>
-    </div>
   </div>
 
-  <!-- CROP PANEL -->
+  <!-- PANEL 3: CROP -->
   <div class="panel" id="panel-crop">
-    <label class="field-label" for="cropSelect">Welche Pflanze?</label>
-    <select id="cropSelect"></select>
-    <div class="crop-results" id="cropResults"></div>
-    <div class="legend">
-      <div class="legend-item"><span class="legend-swatch best"></span>Best</div>
-      <div class="legend-item"><span class="legend-swatch good"></span>Good</div>
-      <div class="legend-item"><span class="legend-swatch poor"></span>Poor</div>
-      <div class="legend-item"><span class="legend-swatch bad"></span>Bad</div>
+    <div style="margin-bottom: 20px;">
+      <label class="field-label" for="cropSelect">Select Crop:</label>
+      <select id="cropSelect"></select>
     </div>
+    <div id="cropResults"></div>
   </div>
 
   <footer>
-    Daten aus der Project-Zomboid-Community-Tabelle. Fehlende Einträge werden als "bad" behandelt.
+    Project Zomboid Sowing Calendar. Row 1: Optimal Climate Rating, Row 2: Growth Timeline from Sowing Date.
   </footer>
 </div>
 
 <script>
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const MONTHS_DE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const MONTHS_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-// name, [12 ratings in MONTHS order], growing days (as text)
 const CROPS = [
-["Barley", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "108 Tage"],
-["Basil", ["bad","bad","best","poor","good","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Bell Pepper", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Black Sage", ["bad","bad","good","best","best","good","poor","poor","bad","bad","bad","bad"], "60 Tage"],
-["Broadleaf Plantain", ["bad","bad","good","best","good","poor","poor","good","bad","bad","bad","bad"], "60 Tage"],
-["Broccoli", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], "60 Tage"],
-["Cabbages", ["bad","good","best","good","best","good","poor","bad","bad","bad","bad","bad"], "60 Tage"],
-["Carrots", ["bad","best","good","good","good","best","poor","bad","bad","bad","bad","bad"], "90 Tage"],
-["Cauliflower", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Chamomile", ["bad","bad","good","best","good","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Chives", ["bad","bad","good","best","good","poor","poor","good","bad","bad","bad","bad"], "60 Tage"],
-["Cilantro", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Comfrey", ["bad","bad","best","best","good","poor","poor","good","bad","bad","bad","bad"], "60 Tage"],
-["Common Mallow", ["bad","bad","best","best","good","poor","poor","good","bad","bad","bad","bad"], "60 Tage"],
-["Corn", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Cucumber", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Flax", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "108 Tage"],
-["Garlic", ["bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad","bad"], "240 Tage"],
-["Green Peas", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Habanero", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Hemp", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "240 Tage"],
-["Hops", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "240 Tage"],
-["Jalapeno", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Kale", ["bad","good","best","good","good","good","best","poor","bad","bad","bad","bad"], "60 Tage"],
-["Lavender", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Leek", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], "150 Tage"],
-["Lemongrass", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], "60 Tage"],
-["Lettuce", ["bad","good","best","good","good","good","best","good","poor","bad","bad","bad"], "60 Tage"],
-["Marigold", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Mint", ["bad","good","best","good","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Onions", ["bad","best","poor","bad","bad","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Oregano", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Parsley", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Poppies", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Potatoes", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Pumpkin", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Radishes", ["bad","good","best","good","good","good","best","poor","bad","bad","bad","bad"], "30 Tage"],
-["Rosemary", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], "180 Tage"],
-["Roses", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Rye", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "108 Tage"],
-["Sage", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Soybeans", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Spinach", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], "60 Tage"],
-["Strawberry Plant", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Sugar Beet", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], "60 Tage"],
-["Sunflower", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Sweet Potatoes", ["bad","bad","bad","bad","bad","best","poor","bad","bad","bad","bad","bad"], "90 Tage"],
-["Thyme", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], "60 Tage"],
-["Tobacco", ["bad","bad","best","good","good","good","poor","bad","bad","bad","bad","bad"], "180 Tage"],
-["Tomato Vine", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Turnip", ["bad","bad","bad","bad","bad","best","poor","good","best","poor","bad","bad"], "60 Tage"],
-["Watermellon", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"],
-["Wild Garlic", ["bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad","bad"], "240 Tage"],
-["Winter Wheat", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], "108 Tage"],
-["Zucchini", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], "90 Tage"]
+["Barley", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], 108],
+["Basil", ["bad","bad","best","poor","good","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Bell Pepper", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], 60],
+["Black Sage", ["bad","bad","good","best","best","good","poor","poor","bad","bad","bad","bad"], 60],
+["Broadleaf Plantain", ["bad","bad","good","best","good","poor","poor","good","bad","bad","bad","bad"], 60],
+["Broccoli", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], 60],
+["Cabbages", ["bad","good","best","good","best","good","poor","bad","bad","bad","bad","bad"], 60],
+["Carrots", ["bad","best","good","good","good","best","poor","bad","bad","bad","bad","bad"], 90],
+["Cauliflower", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Chamomile", ["bad","bad","good","best","good","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Chives", ["bad","bad","good","best","good","poor","poor","good","bad","bad","bad","bad"], 60],
+["Cilantro", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Comfrey", ["bad","bad","best","best","good","poor","poor","good","bad","bad","bad","bad"], 60],
+["Common Mallow", ["bad","bad","best","best","good","poor","poor","good","bad","bad","bad","bad"], 60],
+["Corn", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Cucumber", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Flax", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], 108],
+["Garlic", ["bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad","bad"], 240],
+["Green Peas", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Habanero", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], 60],
+["Hemp", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], 240],
+["Hops", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], 240],
+["Jalapeno", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], 60],
+["Kale", ["bad","good","best","good","good","good","best","poor","bad","bad","bad","bad"], 60],
+["Lavender", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Leek", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], 150],
+["Lemongrass", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], 60],
+["Lettuce", ["bad","good","best","good","good","good","best","good","poor","bad","bad","bad"], 60],
+["Marigold", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Mint", ["bad","good","best","good","bad","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Onions", ["bad","best","poor","bad","bad","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Oregano", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Parsley", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Poppies", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Potatoes", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Pumpkin", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Radishes", ["bad","good","best","good","good","good","best","poor","bad","bad","bad","bad"], 30],
+["Rosemary", ["bad","bad","good","good","good","good","good","good","good","bad","bad","bad"], 180],
+["Roses", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Rye", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], 108],
+["Sage", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Soybeans", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Spinach", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], 60],
+["Strawberry Plant", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Sugar Beet", ["bad","good","best","good","good","best","poor","bad","bad","bad","bad","bad"], 60],
+["Sunflower", ["bad","bad","bad","best","poor","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Sweet Potatoes", ["bad","bad","bad","bad","bad","best","poor","bad","bad","bad","bad","bad"], 90],
+["Thyme", ["bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad","bad"], 60],
+["Tobacco", ["bad","bad","best","good","good","good","poor","bad","bad","bad","bad","bad"], 180],
+["Tomato Vine", ["bad","bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad"], 90],
+["Turnip", ["bad","bad","bad","bad","bad","best","poor","good","best","poor","bad","bad"], 60],
+["Watermelon", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 90],
+["Wild Garlic", ["bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad","bad"], 240],
+["Winter Wheat", ["bad","bad","bad","bad","bad","bad","bad","good","best","poor","bad","bad"], 108],
+["Zucchini", ["bad","bad","good","best","poor","bad","bad","bad","bad","bad","bad","bad"], 90]
 ];
 
-// --- Tabs ---
+const sowingInput = document.getElementById('sowingDate');
+const stepSelect = document.getElementById('stepSelect');
+const today = new Date();
+sowingInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+function getDaysInMonth(month, year) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function buildHeaders(year, stepDays, monthHeadElement, dayHeadElement, includeCropCol = true) {
+  monthHeadElement.innerHTML = includeCropCol ? '<th class="crop-col-sticky" rowspan="2">Crop</th>' : '';
+  dayHeadElement.innerHTML = '';
+
+  for (let m = 0; m < 12; m++) {
+    const daysCount = getDaysInMonth(m, year);
+    const blocksCount = Math.ceil(daysCount / stepDays);
+
+    monthHeadElement.innerHTML += `<th class="month-header" colspan="${blocksCount}">${MONTHS_EN[m]}</th>`;
+    
+    for (let b = 0; b < blocksCount; b++) {
+      const startDay = b * stepDays + 1;
+      dayHeadElement.innerHTML += `<th class="day-header">${startDay}</th>`;
+    }
+  }
+}
+
+function renderOverview() {
+  const sowingVal = sowingInput.value;
+  if (!sowingVal) return;
+
+  const stepDays = parseInt(stepSelect.value, 10);
+  const [sYear, sMonth, sDay] = sowingVal.split('-').map(Number);
+  const currentYear = sYear;
+
+  buildHeaders(currentYear, stepDays, document.getElementById('monthHeadRow'), document.getElementById('dayHeadRow'), true);
+
+  const body = document.getElementById('overviewBody');
+  body.innerHTML = '';
+
+  CROPS.forEach(([name, ratings, days]) => {
+    const startGrow = new Date(sYear, sMonth - 1, sDay);
+    
+    const startP6 = new Date(startGrow);
+    startP6.setDate(startP6.getDate() + days);
+
+    const p6Duration = Math.max(3, Math.round(days * 0.12));
+    const startP7 = new Date(startP6);
+    startP7.setDate(startP7.getDate() + p6Duration);
+
+    const p7Duration = Math.max(3, Math.round(days * 0.12));
+    const endP7 = new Date(startP7);
+    endP7.setDate(endP7.getDate() + p7Duration);
+
+    const tr1 = document.createElement('tr');
+    tr1.className = 'row-rating';
+    let html1 = `<td class="crop-col-sticky" rowspan="2">${name}</td>`;
+
+    const tr2 = document.createElement('tr');
+    tr2.className = 'row-phases';
+    let html2 = '';
+
+    for (let m = 0; m < 12; m++) {
+      const daysCount = getDaysInMonth(m, currentYear);
+      const blocksCount = Math.ceil(daysCount / stepDays);
+      const monthRating = ratings[m];
+
+      for (let b = 0; b < blocksCount; b++) {
+        const isLastBlock = (b === blocksCount - 1);
+        const borderClass = isLastBlock ? ' month-end' : '';
+
+        // Row 1: Climate Rating
+        html1 += `<td class="block-cell rating ${monthRating}${borderClass}"></td>`;
+
+        // Row 2: Growth Phases
+        const blockStartDay = b * stepDays + 1;
+        const blockEndDay = Math.min(blockStartDay + stepDays - 1, daysCount);
+        
+        let blockStartDate = new Date(currentYear, m, blockStartDay);
+        let blockEndDate = new Date(currentYear, m, blockEndDay);
+
+        let phaseClass = '';
+        const checkPhases = (bStart, bEnd) => {
+          if (bEnd >= startP7 && bStart < endP7) return 'phase7';
+          if (bEnd >= startP6 && bStart < startP7) return 'phase6';
+          if (bEnd >= startGrow && bStart < startP6) return 'growing';
+          return '';
+        };
+
+        phaseClass = checkPhases(blockStartDate, blockEndDate);
+        if (!phaseClass) {
+          const blockStartDateNext = new Date(currentYear + 1, m, blockStartDay);
+          const blockEndDateNext = new Date(currentYear + 1, m, blockEndDay);
+          phaseClass = checkPhases(blockStartDateNext, blockEndDateNext);
+        }
+
+        html2 += `<td class="block-cell phase-cell ${phaseClass}${borderClass}"></td>`;
+      }
+    }
+
+    tr1.innerHTML = html1;
+    tr2.innerHTML = html2;
+
+    body.appendChild(tr1);
+    body.appendChild(tr2);
+  });
+}
+
+// --- MONTH PANEL LOGIC WITH TEXTUAL PHASES ---
+const monthSelect = document.getElementById('monthSelect');
+MONTHS_EN.forEach((name, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = name;
+  monthSelect.appendChild(opt);
+});
+monthSelect.value = new Date().getMonth();
+
+function renderMonth() {
+  const idx = parseInt(monthSelect.value, 10);
+  const sowingVal = sowingInput.value;
+  if (!sowingVal) return;
+
+  const [sYear, sMonth, sDay] = sowingVal.split('-').map(Number);
+  const buckets = { best: [], good: [], poor: [], bad: [] };
+
+  CROPS.forEach(([name, ratings, days]) => {
+    // Calculate phase dates based on sowing date
+    const startGrow = new Date(sYear, sMonth - 1, sDay);
+    
+    const startP6 = new Date(startGrow);
+    startP6.setDate(startP6.getDate() + days);
+
+    const p6Duration = Math.max(3, Math.round(days * 0.12));
+    const startP7 = new Date(startP6);
+    startP7.setDate(startP7.getDate() + p6Duration);
+
+    const p7Duration = Math.max(3, Math.round(days * 0.12));
+    const endP7 = new Date(startP7);
+    endP7.setDate(endP7.getDate() + p7Duration);
+
+    // Format Month/Day for textual display
+    const formatRange = (d1, d2) => {
+      const m1 = MONTHS_EN[d1.getMonth()];
+      const m2 = MONTHS_EN[d2.getMonth()];
+      if (m1 === m2) {
+        return `${m1} ${d1.getDate()}–${d2.getDate()}`;
+      }
+      return `${m1} ${d1.getDate()} – ${m2} ${d2.getDate()}`;
+    };
+
+    const p6Text = formatRange(startP6, new Date(startP7.getTime() - 86400000));
+    const p7Text = formatRange(startP7, new Date(endP7.getTime() - 86400000));
+
+    buckets[ratings[idx] || "bad"].push({ name, days, p6Text, p7Text });
+  });
+
+  const container = document.getElementById('growthColumns');
+  container.innerHTML = "";
+  
+  ["best","good","poor","bad"].forEach(status => {
+    const col = document.createElement('div');
+    col.className = 'col ' + status;
+    col.innerHTML = `
+      <div class="col-head">${status.toUpperCase()} (${buckets[status].length})</div>
+      <div class="col-body">
+        ${buckets[status].map(item => `
+          <div class="crop-chip" onclick="jumpToCrop('${item.name}')">
+            <strong>${item.name}</strong> <span style="font-size:11px; color:var(--dim);">(${item.days}d)</span>
+            <div class="crop-info-text">
+              <span class="p6">Harvest (P6):</span> ${item.p6Text}<br>
+              <span class="p7">Seeds (P7):</span> ${item.p7Text}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(col);
+  });
+}
+
+// --- CROP PANEL LOGIC WITH DYNAMIC GRID INTERVAL ---
+const cropSelect = document.getElementById('cropSelect');
+const sortedCrops = [...CROPS].sort((a, b) => a[0].localeCompare(b[0]));
+sortedCrops.forEach(([name]) => {
+  const opt = document.createElement('option');
+  opt.value = name;
+  opt.textContent = name;
+  cropSelect.appendChild(opt);
+});
+
+function renderCropDetail() {
+  const name = cropSelect.value;
+  const entry = CROPS.find(c => c[0] === name);
+  const sowingVal = sowingInput.value;
+  if (!entry || !sowingVal) return;
+
+  const stepDays = parseInt(stepSelect.value, 10);
+  const [cropName, ratings, days] = entry;
+  const [sYear, sMonth, sDay] = sowingVal.split('-').map(Number);
+  const currentYear = sYear;
+
+  const startGrow = new Date(sYear, sMonth - 1, sDay);
+  
+  const startP6 = new Date(startGrow);
+  startP6.setDate(startP6.getDate() + days);
+
+  const p6Duration = Math.max(3, Math.round(days * 0.12));
+  const startP7 = new Date(startP6);
+  startP7.setDate(startP7.getDate() + p6Duration);
+
+  const p7Duration = Math.max(3, Math.round(days * 0.12));
+  const endP7 = new Date(startP7);
+  endP7.setDate(endP7.getDate() + p7Duration);
+
+  const container = document.getElementById('cropResults');
+  container.innerHTML = `
+    <div class="crop-card">
+      <h3>${cropName} <span style="color:var(--dim); font-size:14px; font-weight:normal;">(${days} days total growth)</span></h3>
+      <div class="table-scroll">
+        <table class="overview">
+          <thead>
+            <tr id="cropMonthHeadRow"></tr>
+            <tr id="cropDayHeadRow"></tr>
+          </thead>
+          <tbody id="cropBody"></tbody>
+        </table>
+      </div>
+      <div class="legend" style="margin-top:16px;">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--best)"></span>Best</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--good)"></span>Good</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--poor)"></span>Poor</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--bad-bg); border: 1px solid var(--border);"></span>Bad</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--growing-bg)"></span>Growing</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--phase6-bg)"></span>Phase 6 (Harvest)</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--phase7-bg)"></span>Phase 7 (Seed Blooming)</div>
+      </div>
+    </div>
+  `;
+
+  buildHeaders(currentYear, stepDays, document.getElementById('cropMonthHeadRow'), document.getElementById('cropDayHeadRow'), false);
+
+  const cropBody = document.getElementById('cropBody');
+  const tr1 = document.createElement('tr');
+  tr1.className = 'row-rating';
+  let html1 = '';
+
+  const tr2 = document.createElement('tr');
+  tr2.className = 'row-phases';
+  let html2 = '';
+
+  for (let m = 0; m < 12; m++) {
+    const daysCount = getDaysInMonth(m, currentYear);
+    const blocksCount = Math.ceil(daysCount / stepDays);
+    const monthRating = ratings[m];
+
+    for (let b = 0; b < blocksCount; b++) {
+      const isLastBlock = (b === blocksCount - 1);
+      const borderClass = isLastBlock ? ' month-end' : '';
+
+      // Row 1: Climate Rating
+      html1 += `<td class="block-cell rating ${monthRating}${borderClass}"></td>`;
+
+      // Row 2: Growth Phases
+      const blockStartDay = b * stepDays + 1;
+      const blockEndDay = Math.min(blockStartDay + stepDays - 1, daysCount);
+      
+      let blockStartDate = new Date(currentYear, m, blockStartDay);
+      let blockEndDate = new Date(currentYear, m, blockEndDay);
+
+      let phaseClass = '';
+      const checkPhases = (bStart, bEnd) => {
+        if (bEnd >= startP7 && bStart < endP7) return 'phase7';
+        if (bEnd >= startP6 && bStart < startP7) return 'phase6';
+        if (bEnd >= startGrow && bStart < startP6) return 'growing';
+        return '';
+      };
+
+      phaseClass = checkPhases(blockStartDate, blockEndDate);
+      if (!phaseClass) {
+        const blockStartDateNext = new Date(currentYear + 1, m, blockStartDay);
+        const blockEndDateNext = new Date(currentYear + 1, m, blockEndDay);
+        phaseClass = checkPhases(blockStartDateNext, blockEndDateNext);
+      }
+
+      html2 += `<td class="block-cell phase-cell ${phaseClass}${borderClass}"></td>`;
+    }
+  }
+
+  tr1.innerHTML = html1;
+  tr2.innerHTML = html2;
+
+  cropBody.appendChild(tr1);
+  cropBody.appendChild(tr2);
+}
+
+function jumpToCrop(name) {
+  document.querySelector('.tab[data-tab="crop"]').click();
+  cropSelect.value = name;
+  renderCropDetail();
+}
+
+// TAB NAVIGATION
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -460,129 +755,22 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-function jumpToCrop(name) {
-  document.querySelector('.tab[data-tab="crop"]').click();
-  cropSelect.value = name;
+sowingInput.addEventListener('change', () => {
+  renderOverview();
+  renderMonth();
   renderCropDetail();
-}
-
-// --- Overview panel ---
-function renderOverview() {
-  const headRow = document.getElementById('overviewHeadRow');
-  headRow.innerHTML = '<th class="crop-col">Pflanze</th>' +
-    MONTHS_DE.map(m => '<th>' + m.slice(0,3) + '</th>').join('') +
-    '<th class="days-col">Wachstumszeit</th>';
-
-  const body = document.getElementById('overviewBody');
-  body.innerHTML = "";
-  CROPS.forEach(([name, ratings, days]) => {
-    const tr = document.createElement('tr');
-    let html = '<td class="crop-col">' + name + '</td>';
-    ratings.forEach(status => {
-      html += '<td class="rating ' + status + '">' + status + '</td>';
-    });
-    html += '<td class="days-col">' + days + '</td>';
-    tr.innerHTML = html;
-    tr.addEventListener('click', () => jumpToCrop(name));
-    body.appendChild(tr);
-  });
-}
-renderOverview();
-
-// --- Month panel ---
-const monthSelect = document.getElementById('monthSelect');
-MONTHS_DE.forEach((name, i) => {
-  const opt = document.createElement('option');
-  opt.value = i;
-  opt.textContent = name;
-  monthSelect.appendChild(opt);
 });
-const currentMonthIndex = new Date().getMonth();
-monthSelect.value = currentMonthIndex;
 
-function renderMonth() {
-  const idx = parseInt(monthSelect.value, 10);
-  const buckets = { best: [], good: [], poor: [], bad: [] };
-  CROPS.forEach(([name, ratings, days]) => {
-    const status = ratings[idx] || "bad";
-    buckets[status].push([name, days]);
-  });
-  ["best","good","poor","bad"].forEach(status => buckets[status].sort((a,b) => a[0].localeCompare(b[0])));
+stepSelect.addEventListener('change', () => {
+  renderOverview();
+  renderCropDetail();
+});
 
-  const labels = { best: "Best", good: "Good", poor: "Poor", bad: "Bad" };
-  const container = document.getElementById('growthColumns');
-  container.innerHTML = "";
-  ["best","good","poor","bad"].forEach(status => {
-    const col = document.createElement('div');
-    col.className = 'col ' + status;
-    const head = document.createElement('div');
-    head.className = 'col-head';
-    head.textContent = labels[status] + " (" + buckets[status].length + ")";
-    const body = document.createElement('div');
-    body.className = 'col-body';
-    if (buckets[status].length === 0) {
-      const p = document.createElement('div');
-      p.className = 'empty-note';
-      p.textContent = "Keine Pflanzen";
-      body.appendChild(p);
-    } else {
-      buckets[status].forEach(([name, days]) => {
-        const chip = document.createElement('div');
-        chip.className = 'crop-chip';
-        chip.innerHTML = name + '<span class="days">' + days + '</span>';
-        chip.addEventListener('click', () => jumpToCrop(name));
-        body.appendChild(chip);
-      });
-    }
-    col.appendChild(head);
-    col.appendChild(body);
-    container.appendChild(col);
-  });
-}
 monthSelect.addEventListener('change', renderMonth);
-renderMonth();
-
-// --- Crop panel ---
-const cropSelect = document.getElementById('cropSelect');
-const cropResults = document.getElementById('cropResults');
-
-const sortedCrops = [...CROPS].sort((a, b) => a[0].localeCompare(b[0]));
-sortedCrops.forEach(([name]) => {
-  const opt = document.createElement('option');
-  opt.value = name;
-  opt.textContent = name;
-  cropSelect.appendChild(opt);
-});
-cropSelect.value = sortedCrops[0][0];
-
-function renderCropDetail() {
-  const name = cropSelect.value;
-  const entry = CROPS.find(c => c[0] === name);
-  cropResults.innerHTML = "";
-  if (!entry) return;
-
-  const [cropName, ratings, days] = entry;
-  const row = document.createElement('div');
-  row.className = 'crop-row';
-
-  const head = document.createElement('div');
-  head.className = 'crop-row-head';
-  head.innerHTML = '<h3>' + cropName + '</h3><span class="days-label">Wachstumszeit: ' + days + '</span>';
-  row.appendChild(head);
-
-  const strip = document.createElement('div');
-  strip.className = 'month-strip';
-  ratings.forEach((status, i) => {
-    const cell = document.createElement('div');
-    cell.className = 'month-cell ' + status;
-    cell.innerHTML = '<span class="m-name">' + MONTHS_DE[i].slice(0,3) + '</span><span class="status">' + status + '</span>';
-    strip.appendChild(cell);
-  });
-  row.appendChild(strip);
-
-  cropResults.appendChild(row);
-}
 cropSelect.addEventListener('change', renderCropDetail);
+
+renderOverview();
+renderMonth();
 renderCropDetail();
 </script>
 </body>
